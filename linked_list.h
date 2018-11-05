@@ -10,7 +10,7 @@
 #include <stdlib.h>
 
 // Library relies on three fundamental data types:
-// 1-Boolean as a mimic of boolean data type in other language
+// 1-Boolean as a mimic of boolean data type in other languages
 // 2-Node as a crucial and substansial element of linked list above which it built on
 // 3-NodePtr as a secondary data type
 typedef enum Boolean Boolean;
