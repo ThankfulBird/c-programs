@@ -22,6 +22,7 @@ struct Vertex {
 // Global Variables
 Boolean IS_KEY_FOUND;
 Boolean IS_UNIQUE_REMOVE;
+Boolean IS_PROTOCOL_REVOKED;
 
 // Function prototypes
 void read_source_file(VertexPtr *root_ptr,char file_name[]);
@@ -30,6 +31,7 @@ void insert_vertex(VertexPtr *root_ptr, int value);
 void apply_insertive_traversal(VertexPtr *current_vertex_ptr, VertexPtr new_vertex);
 void remove_vertex(VertexPtr *root_ptr, int value);
 void apply_removal_traversal(VertexPtr root, int value, VertexPtr *sought_vertex_ptr, VertexPtr *previous_vertex_ptr);
+void find_maximum_depth(VertexPtr root, int *maximum_depth);
 Boolean is_vertex_leave(VertexPtr vertex);
 Boolean has_one_child(VertexPtr vertex);
 void update_tree(VertexPtr *root_ptr);
@@ -115,6 +117,8 @@ void insert_vertex(VertexPtr *root_ptr, int value) {
 		new_vertex->right_child = NULL;
 		if (*root_ptr == NULL) {
 			*root_ptr = new_vertex;
+			remove("ternary_tree_log.txt");
+			create_ternary_tree_log(*root_ptr);
 			return;
 		}
 		VertexPtr current_vertex = *root_ptr;
@@ -145,6 +149,8 @@ void apply_insertive_traversal(VertexPtr *current_vertex_ptr, VertexPtr new_vert
 }
 
 void remove_vertex(VertexPtr *root_ptr, int value) {
+	int maximum_depth = 0;
+	find_maximum_depth(*root_ptr, &maximum_depth);
 	VertexPtr sought_vertex = NULL, previous_vertex = NULL;
 	apply_removal_traversal(*root_ptr, value, &sought_vertex, &previous_vertex);
 	if (sought_vertex == NULL) {
@@ -165,7 +171,7 @@ void remove_vertex(VertexPtr *root_ptr, int value) {
 			previous_vertex->right_child = NULL;
 		}
 		free(sought_vertex);
-	} else if (has_one_child(sought_vertex)) {
+	} else if (has_one_child(sought_vertex) && *root_ptr != sought_vertex) {
 		char bridge_direction = sought_vertex->route[strlen(sought_vertex->route) - 1];
 		if (sought_vertex->left_child != NULL) {
 			switch (bridge_direction) {
@@ -213,6 +219,16 @@ void apply_removal_traversal(VertexPtr root, int value, VertexPtr *sought_vertex
 	apply_removal_traversal(root->right_child, value, sought_vertex_ptr, previous_vertex_ptr);
 }
 
+void find_maximum_depth(VertexPtr root, int *maximum_depth) {
+	if (root == NULL) {
+		return;
+	}
+	*maximum_depth = (*maximum_depth < root->depth) ? root->depth : *maximum_depth;
+	find_maximum_depth(root->left_child, maximum_depth);
+	find_maximum_depth(root->middle_child, maximum_depth);
+	find_maximum_depth(root->right_child, maximum_depth);
+}
+
 Boolean is_vertex_leave(VertexPtr vertex) {
 	if (vertex->left_child == NULL && vertex->middle_child == NULL && vertex->right_child == NULL) {
 		return TRUE;
@@ -253,8 +269,21 @@ void create_temporary_log(VertexPtr root, char temporary_log_file_name[]) {
 }
 
 void adjust_tree_after_removal(VertexPtr sought_vertex) {
-	int optimum_value = sought_vertex->left_child->data, value;
-	find_optimum_value(sought_vertex->left_child, &optimum_value);
+	int optimum_value, value;
+	if (sought_vertex ->left_child != NULL) {
+		optimum_value = sought_vertex->left_child->data;
+		find_optimum_value(sought_vertex->left_child, &optimum_value);
+	} else if (sought_vertex->left_child == NULL & sought_vertex->middle_child == NULL) {
+		optimum_value = sought_vertex->right_child->data;
+		IS_PROTOCOL_REVOKED = TRUE;
+		find_optimum_value(sought_vertex->left_child, &optimum_value);
+		IS_PROTOCOL_REVOKED = FALSE;
+	} else {
+		optimum_value = sought_vertex->middle_child->data;
+		IS_PROTOCOL_REVOKED = TRUE;
+		find_optimum_value(sought_vertex->middle_child, &optimum_value);
+		IS_PROTOCOL_REVOKED = FALSE;
+	}
 	sought_vertex->data = optimum_value;
 	IS_UNIQUE_REMOVE = TRUE;
 	remove_vertex(&sought_vertex, optimum_value);
@@ -270,14 +299,18 @@ void adjust_tree_after_removal(VertexPtr sought_vertex) {
 	remove("base_middle_child_log.txt");
 }
 
-void find_optimum_value(VertexPtr base_left_child, int *optimum_value_ptr) {
-	if (base_left_child == NULL) {
+void find_optimum_value(VertexPtr base_child, int *optimum_value_ptr) {
+	if (base_child == NULL) {
 		return;
 	}
-	*optimum_value_ptr = (base_left_child->data > *optimum_value_ptr) ? base_left_child->data : *optimum_value_ptr;
-	find_optimum_value(base_left_child->left_child, optimum_value_ptr);
-	find_optimum_value(base_left_child->middle_child, optimum_value_ptr);
-	find_optimum_value(base_left_child->right_child, optimum_value_ptr);
+	if (!IS_PROTOCOL_REVOKED) {
+		*optimum_value_ptr = (base_child->data > *optimum_value_ptr) ? base_child->data : *optimum_value_ptr;
+	} else {
+		*optimum_value_ptr = (base_child->data < *optimum_value_ptr) ? base_child->data : *optimum_value_ptr;
+	}
+	find_optimum_value(base_child->left_child, optimum_value_ptr);
+	find_optimum_value(base_child->middle_child, optimum_value_ptr);
+	find_optimum_value(base_child->right_child, optimum_value_ptr);
 }
 
 void record_base_middle_child(VertexPtr base_middle_child) {
